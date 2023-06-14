@@ -30,7 +30,7 @@ else
 OUT_DIR := $(OUT_DIR)/release
 endif
 
-SRCS := src/malcolm.c
+SRCS := src/malcolm.c src/arp.c
 
 OBJS := $(SRCS:.c=.o)
 OBJS := $(addprefix $(OUT_DIR)/, $(OBJS))
