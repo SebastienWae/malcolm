@@ -3,5 +3,7 @@ out/
 pvs_report/
 cc_report/
 compile_commands.json
-ft_malcolm
-ft_malcolm_asan
+malcolm
+malcolm_asan
+malcolm_debug
+malcolm_test
