@@ -6,21 +6,44 @@ LESS := less
 GDB := gdb
 VALGRIND := valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes
 VALGRIND_LOG := valgrind.log
+COMPILEDB := compiledb
+CODECHECKER := CodeChecker
 
 CC := gcc
-CFLAGS := -O2 -g
+
+ifdef TEST
+CPPFLAGS := -DTESTING
+endif
+
+CFLAGS := -g
+ifdef DEBUG
+CFLAGS += -Og
+else
+CFLAGS += -O2
+endif
 ifdef SANITIZE
-CFLAGS += -Og -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address
+CFLAGS += -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address,undefined
+endif
+
+ifdef TEST
+LDFLAGS := -lcriterion
 endif
 
 WARNING := -Wall -Wextra
-ifndef NOERROR
+ifndef DEBUG
 WARNING += -Werror
 endif
 
-NAME := ft_malcolm
+NAME := malcolm
+ifdef TEST
+NAME := $(NAME)_test
+else
 ifdef SANITIZE
 NAME := $(NAME)_asan
+endif
+ifdef DEBUG
+NAME := $(NAME)_debug
+endif
 endif
 
 OUT_DIR := out
@@ -30,7 +53,17 @@ else
 OUT_DIR := $(OUT_DIR)/release
 endif
 
-SRCS := src/malcolm.c src/arp.c
+ifdef TEST
+SRCS := src/args.c \
+	tests/args.test.c \
+	src/utils.c \
+	tests/utils.test.c
+else
+SRCS := src/malcolm.c \
+	src/arp.c \
+	src/args.c \
+	src/utils.c
+endif
 
 OBJS := $(SRCS:.c=.o)
 OBJS := $(addprefix $(OUT_DIR)/, $(OBJS))
@@ -44,15 +77,22 @@ $(OUT_DIR)/%.o: %.c Makefile
 	$(COMPILE.c) $< $(WARNING) -MMD -MP -o $@
 
 $(NAME): $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o $@
+	$(CC) $(LDFLAGS) $(CFLAGS) $(OBJS) -o $@
+
+test: export DEBUG = true
+test: export SANITIZE = true
+test: export TEST = true
+test:
+	$(MAKE) --no-print-directory $*
+	./$(NAME)_test
 
 asan-%: export SANITIZE = true
-asan-%: export NOERROR = true
+asan-%: export DEBUG = true
 asan-%:
 	$(MAKE) --no-print-directory $*
 
-noerr-%: export NOERROR = true
-noerr-%:
+debug-%: export DEBUG = true
+debug-%:
 	$(MAKE) --no-print-directory $*
 
 gdb:
@@ -68,15 +108,10 @@ fclean: clean
 re: fclean all
 
 compile_commands:
-	compiledb make re
-
-pvs: compile_commands
-	$(RM) pvs_report
-	pvs-studio-analyzer analyze -f ./compile_commands.json
-	plog-converter -t fullhtml PVS-Studio.log -o ./pvs_report
+	$(COMPILEDB) make re
 
 cc: compile_commands
-	codechecker analyze --ctu ./compile_commands.json --output ./cc_report
-	codechecker parse ./cc_report
+	$(CODECHECKER) analyze --ctu ./compile_commands.json --output ./cc_report
+	$(CODECHECKER) parse ./cc_report
 
 .PHONY: all clean fclean re valgrind gdb pvs cc
