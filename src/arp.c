@@ -5,26 +5,32 @@
 
 #include "arp.h"
 
-mm_arp_packet_t *parse_arp_packet(uint8_t *buffer) {
-  mm_arp_packet_t *p = malloc(sizeof(mm_arp_packet_t));
+bool send_arp_packet(mm_arp_packet_t *p) {
+  printf("[DEBUG] Sending ARP packet\n");
 
-  if (p == NULL) {
-    return NULL;
+  return true;
+}
+
+bool parse_arp_packet(mm_arp_packet_t **p, uint8_t *buffer) {
+  *p = malloc(sizeof(mm_arp_packet_t));
+
+  if (*p == NULL) {
+    return false;
   }
 
-  *p = (mm_arp_packet_t){
-      .hardware_type = ntohs(((uint16_t *)buffer)[0]),
-      .protocol_type = ntohs(((uint16_t *)buffer)[2]),
-      .hardware_address_length = buffer[4],
-      .protocol_address_length = buffer[5],
-      .opcode = ntohs(((uint16_t *)buffer)[6]),
+  **p = (mm_arp_packet_t){
+      .hardware_type = ntohs(*(uint16_t *)buffer),
+      .protocol_type = ntohs(*(uint16_t *)(buffer + 2)),
+      .hardware_address_length = *(buffer + 4),
+      .protocol_address_length = *(buffer + 5),
+      .opcode = ntohs(*(uint16_t *)(buffer + 6)),
       .sender_hardware_address = buffer + 8,
       .sender_protocol_address = buffer + 14,
       .target_hardware_address = buffer + 18,
       .target_protocol_address = buffer + 24,
   };
 
-  return p;
+  return true;
 }
 
 void free_arp_packet(mm_arp_packet_t *p) {
@@ -66,23 +72,16 @@ char *arp_opcode_to_string(uint16_t opcode) {
 char *arp_hardware_address_to_string(uint16_t hardware_type, uint8_t *address,
                                      uint8_t length) {
   if (hardware_type == 1) { // ethernet
-    char *string = malloc(length * 3);
+    char *dest = malloc(length * 3);
 
-    if (string == NULL) {
+    if (dest == NULL) {
       return NULL;
     }
 
-    int c = 0;
-    for (int i = 0; i < length; i++) {
-      c += sprintf(string + c, "%02x", address[i]);
-      if (i < length - 1) {
-        c += sprintf(string + c, ":");
-      }
-    }
+    sprintf(dest, "%02x:%02x:%02x:%02x:%02x:%02x", address[0], address[1],
+            address[2], address[3], address[4], address[5]);
 
-    string[c] = '\0';
-
-    return string;
+    return dest;
   } else {
     return NULL;
   }
@@ -91,23 +90,16 @@ char *arp_hardware_address_to_string(uint16_t hardware_type, uint8_t *address,
 char *arp_protocol_address_to_string(uint16_t protocol_type, uint8_t *address,
                                      uint8_t length) {
   if (protocol_type == 0x0800) { // ipv4
-    char *string = malloc(length * 4);
+    char *dest = malloc(length * 4);
 
-    if (string == NULL) {
+    if (dest == NULL) {
       return NULL;
     }
 
-    int c = 0;
-    for (int i = 0; i < length; i++) {
-      c += sprintf(string + c, "%d", address[i]);
-      if (i < length - 1) {
-        c += sprintf(string + c, ".");
-      }
-    }
+    sprintf(dest, "%d.%d.%d.%d", address[0], address[1], address[2],
+            address[3]);
 
-    string[c] = '\0';
-
-    return string;
+    return dest;
   } else {
     return NULL;
   }
@@ -118,7 +110,7 @@ void print_arp_packet(mm_arp_packet_t *p) {
     return;
   }
 
-  printf("ARP Packet Received:\n");
+  printf("[DEBUG] ARP Packet Received:\n");
 
   char *hardware_type = arp_hardware_type_to_string(p->hardware_type);
   printf("  Hardware Type: %s (%d)\n", hardware_type, p->hardware_type);
