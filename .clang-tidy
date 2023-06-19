@@ -16,9 +16,12 @@ Checks: >
   -objc-*,
   -openmp-*,
   -zircon-*,
+  -concurrency-*,
   -readability-identifier-length,
-  -bugprone-easily-swappable-parameters
+  -bugprone-easily-swappable-parameters,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -readability-magic-numbers,
+  -cert-err33-c
 WarningsAsErrors: ''
 HeaderFilterRegex: ''
 AnalyzeTemporaryDtors: false
-...
