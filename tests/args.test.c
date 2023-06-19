@@ -167,12 +167,11 @@ ParameterizedTestParameters(Args, parse) {
       .source_mac_address = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
       .target_ipv4 = 0x1010101,
       .target_mac_address = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
-      .announce = false,
       .verbose = false,
   };
 
   /* -------------------------------- options ------------------------------- */
-  params[6].argc = 7;
+  params[6].argc = 6;
   params[6].argv = cr_calloc(params[0].argc, sizeof(char *));
   {
     char *str = "test";
@@ -185,29 +184,24 @@ ParameterizedTestParameters(Args, parse) {
     strcpy(params[6].argv[1], str);
   }
   {
-    char *str = "-a";
+    char *str = "1.1.1.1";
     params[6].argv[2] = cr_calloc(strlen(str), sizeof(char));
     strcpy(params[6].argv[2], str);
   }
   {
-    char *str = "1.1.1.1";
+    char *str = "ff:ff:ff:ff:ff:ff";
     params[6].argv[3] = cr_calloc(strlen(str), sizeof(char));
     strcpy(params[6].argv[3], str);
   }
   {
-    char *str = "ff:ff:ff:ff:ff:ff";
+    char *str = "1.1.1.1";
     params[6].argv[4] = cr_calloc(strlen(str), sizeof(char));
     strcpy(params[6].argv[4], str);
   }
   {
-    char *str = "1.1.1.1";
+    char *str = "ff:ff:ff:ff:ff:ff";
     params[6].argv[5] = cr_calloc(strlen(str), sizeof(char));
     strcpy(params[6].argv[5], str);
-  }
-  {
-    char *str = "ff:ff:ff:ff:ff:ff";
-    params[6].argv[6] = cr_calloc(strlen(str), sizeof(char));
-    strcpy(params[6].argv[6], str);
   }
   params[6].success = true;
   params[6].args = (mm_args_t){
@@ -215,7 +209,6 @@ ParameterizedTestParameters(Args, parse) {
       .source_mac_address = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
       .target_ipv4 = 0x1010101,
       .target_mac_address = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
-      .announce = true,
       .verbose = true,
   };
 
@@ -307,7 +300,6 @@ ParameterizedTest(struct args_params *param, Args, parse) {
     cr_assert_eq(args.target_ipv4, param->args.target_ipv4);
     cr_assert_arr_eq(args.target_mac_address, param->args.target_mac_address,
                      6);
-    cr_assert_eq(args.announce, param->args.announce);
     cr_assert_eq(args.verbose, param->args.verbose);
   }
 }

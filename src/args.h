@@ -11,7 +11,6 @@ typedef struct mm_args {
   uint8_t target_mac_address[6];
 
   bool verbose;
-  bool announce;
 } mm_args_t;
 
 mm_args_t *init_args();
