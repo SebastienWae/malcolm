@@ -3,6 +3,6 @@
 
 #include <stdbool.h>
 
-bool hextodec(char *src, long *dest, int len);
+bool hextodec(const char *src, long *dest, int len);
 
 #endif /* UTILS_H */

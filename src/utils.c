@@ -1,8 +1,9 @@
 #include <stdbool.h>
 #include <string.h>
 
-bool hextodec(char *src, long *dest, int len) {
-  int cnt = 0, digit = 0;
+bool hextodec(const char *src, long *dest, int len) {
+  int cnt = 0;
+  int digit = 0;
 
   for (int i = len - 1; i >= 0; i--) {
     switch (src[i]) {
