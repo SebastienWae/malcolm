@@ -40,9 +40,10 @@ NAME := $(NAME)_test
 else
 ifdef SANITIZE
 NAME := $(NAME)_asan
-endif
+else
 ifdef DEBUG
 NAME := $(NAME)_debug
+endif
 endif
 endif
 
